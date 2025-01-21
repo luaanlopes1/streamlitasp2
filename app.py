@@ -231,7 +231,6 @@ def processar_xmls(cidade, arquivos, palavras_chave):
                     template_dir = os.path.join(templates_base_dir, template_folder)
 
                     arquivos = gerar_documentos_em_memoria(template_dir, dados, xml_file)
-                    st.text(f"Documentos gerados para {xml_file}: {len(arquivos)} arquivo(s).")
                     arquivos_gerados.extend(arquivos)
 
             if arquivos_gerados:
