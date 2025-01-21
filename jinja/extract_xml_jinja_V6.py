@@ -167,24 +167,24 @@ def processar_todos_xmls(xml_dir, templates_base_dir, palavras_chave):
     return resultados
 
 
-# if __name__ == "__main__":
-#     print("Escolha qual conjunto de XMLs processar:")
-#     print("1. Maracanaú")
-#     print("2. Pacatuba")
-#     escolha = input("Digite o número da sua escolha: ")
+if __name__ == "__main__":
+    print("Escolha qual conjunto de XMLs processar:")
+    print("1. Maracanaú")
+    print("2. Pacatuba")
+    escolha = input("Digite o número da sua escolha: ")
 
-#     if escolha == '1':
-#         xml_dir = "jinja/xml_maracanau"
-#         templates_base_dir = "jinja/MARACANAU"
-#         palavras_chave = PALAVRAS_CHAVE_MARACANAU
-#         print("Processando XMLs de Maracanaú...")
-#     elif escolha == '2':
-#         xml_dir = "jinja/xml_pacatuba"
-#         templates_base_dir = "jinja/PACATUBA"
-#         palavras_chave = PALAVRAS_CHAVE_PACATUBA
-#         print("Processando XMLs de Pacatuba...")
-#     else:
-#         print("Escolha inválida. Por favor, execute o script novamente e escolha 1 ou 2.")
-#         exit()
+    if escolha == '1':
+        xml_dir = "jinja/xml_maracanau"
+        templates_base_dir = "jinja/MARACANAU"
+        palavras_chave = PALAVRAS_CHAVE_MARACANAU
+        print("Processando XMLs de Maracanaú...")
+    elif escolha == '2':
+        xml_dir = "jinja/xml_pacatuba"
+        templates_base_dir = "jinja/PACATUBA"
+        palavras_chave = PALAVRAS_CHAVE_PACATUBA
+        print("Processando XMLs de Pacatuba...")
+    else:
+        print("Escolha inválida. Por favor, execute o script novamente e escolha 1 ou 2.")
+        exit()
 
-#     processar_todos_xmls(xml_dir, templates_base_dir, palavras_chave)
+    processar_todos_xmls(xml_dir, templates_base_dir, palavras_chave)

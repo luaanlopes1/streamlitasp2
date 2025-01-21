@@ -1,0 +1,7 @@
+# Ignorar arquivos temporários
+temp/
+*.tmp
+__pycache__/
+
+app_backup.py
+app_unificado.py
