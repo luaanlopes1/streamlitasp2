@@ -213,7 +213,6 @@ def processar_xmls(cidade, arquivos, palavras_chave):
                 file_path = os.path.join(temp_dir, uploaded_file.name)
                 with open(file_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
-                st.text(f"Arquivo salvo no diretório temporário: {file_path}")
 
             templates_base_dir = os.path.abspath(f"{cidade.upper()}")
             st.text(f"Diretório base dos templates: {templates_base_dir}")
@@ -228,7 +227,6 @@ def processar_xmls(cidade, arquivos, palavras_chave):
                     if dados is None:
                         st.warning(f"Pulando o arquivo {xml_file} devido a erros.")
                         continue
-                    st.text(f"Dados extraídos do XML: {dados}")
 
                     template_folder = identificar_template(dados, palavras_chave)
                     if template_folder is None:
