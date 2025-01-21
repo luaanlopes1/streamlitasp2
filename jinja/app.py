@@ -168,20 +168,29 @@ def processar_todos_xmls(xml_dir, templates_base_dir, palavras_chave):
 def gerar_documentos_em_memoria(template_dir, dados, xml_file_name):
     arquivos_gerados = []
     templates = ["Planilha.docx", "Relatorio.docx"]
+    st.text(f"Templates disponíveis para {xml_file_name}: {templates}")
+
     for template_name in templates:
         template_path = os.path.join(template_dir, template_name)
         if not os.path.exists(template_path):
-            print(f"Template '{template_path}' não encontrado. Pulando...")
+            st.warning(f"Template '{template_path}' não encontrado. Pulando...")
             continue
 
-        # Gerar documento em memória
-        output_filename = f"{os.path.splitext(xml_file_name)[0]}_{template_name}"
-        with io.BytesIO() as temp_file:
-            doc = DocxTemplate(template_path)
-            doc.render(dados)
-            doc.save(temp_file)
-            temp_file.seek(0)
-            arquivos_gerados.append((output_filename, temp_file.read()))
+        try:
+            output_filename = f"{os.path.splitext(xml_file_name)[0]}_{template_name}"
+            st.text(f"Gerando documento: {output_filename}")
+
+            with io.BytesIO() as temp_file:
+                doc = DocxTemplate(template_path)
+                doc.render(dados)
+                doc.save(temp_file)
+                temp_file.seek(0)
+                arquivos_gerados.append((output_filename, temp_file.read()))
+                st.text(f"Documento '{output_filename}' gerado com sucesso.")
+        except Exception as e:
+            st.error(f"Erro ao gerar documento '{template_name}': {e}")
+            continue
+
     return arquivos_gerados
 
 def criar_zip_em_memoria(arquivos_gerados):
@@ -194,32 +203,44 @@ def criar_zip_em_memoria(arquivos_gerados):
 
 def processar_xmls(cidade, arquivos, palavras_chave):
     st.write(f"Processando arquivos para {cidade}...")
+    st.text(f"Iniciando processamento de {len(arquivos)} arquivo(s) XML para {cidade}.")
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        for uploaded_file in arquivos:
-            file_path = os.path.join(temp_dir, uploaded_file.name)
-            with open(file_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-
-        templates_base_dir = os.path.abspath(f"{cidade.upper()}")
-
         try:
+            # Log do diretório temporário
+            st.text(f"Diretório temporário criado: {temp_dir}")
+            for uploaded_file in arquivos:
+                file_path = os.path.join(temp_dir, uploaded_file.name)
+                with open(file_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                st.text(f"Arquivo salvo no diretório temporário: {file_path}")
+
+            templates_base_dir = os.path.abspath(f"{cidade.upper()}")
+            st.text(f"Diretório base dos templates: {templates_base_dir}")
+
             arquivos_gerados = []
             for xml_file in os.listdir(temp_dir):
                 if xml_file.endswith(".xml"):
                     xml_path = os.path.join(temp_dir, xml_file)
+                    st.text(f"Processando arquivo XML: {xml_path}")
+
                     dados = extrair_informacoes_xml(xml_path)
                     if dados is None:
-                        print(f"Pulando o arquivo {xml_file} devido a erros.")
+                        st.warning(f"Pulando o arquivo {xml_file} devido a erros.")
                         continue
+                    st.text(f"Dados extraídos do XML: {dados}")
 
                     template_folder = identificar_template(dados, palavras_chave)
                     if template_folder is None:
-                        print(f"Nenhum template correspondente encontrado para {xml_file}. Pulando...")
+                        st.warning(f"Nenhum template correspondente encontrado para {xml_file}. Pulando...")
                         continue
+                    st.text(f"Template identificado: {template_folder}")
 
                     template_dir = os.path.join(templates_base_dir, template_folder)
+                    st.text(f"Diretório do template: {template_dir}")
+
                     arquivos = gerar_documentos_em_memoria(template_dir, dados, xml_file)
+                    st.text(f"Documentos gerados para {xml_file}: {len(arquivos)} arquivo(s).")
                     arquivos_gerados.extend(arquivos)
 
             if arquivos_gerados:
@@ -227,6 +248,7 @@ def processar_xmls(cidade, arquivos, palavras_chave):
 
                 # Cria o ZIP em memória
                 zip_buffer = criar_zip_em_memoria(arquivos_gerados)
+                st.text("Arquivo ZIP gerado em memória.")
 
                 # Download do ZIP
                 st.download_button(
@@ -239,6 +261,7 @@ def processar_xmls(cidade, arquivos, palavras_chave):
                 st.warning("Nenhum arquivo foi processado.")
         except Exception as e:
             st.error(f"Erro ao processar XMLs: {str(e)}")
+            st.text(f"Erro detalhado: {e}")
 
 def main():
     st.title("Gerador de Relatórios NFs ASP")
