@@ -9,6 +9,7 @@ from num2words import num2words
 import zipfile
 import io
 import re
+import base64
 
 # Variáveis globais para palavras-chave
 PALAVRAS_CHAVE_MARACANAU = {
@@ -163,42 +164,76 @@ def processar_todos_xmls(xml_dir, templates_base_dir, palavras_chave):
             resultados.extend(arquivos_gerados)
     return resultados
 
-def criar_zip_documentos(arquivos_gerados):
+
+def gerar_documentos_em_memoria(template_dir, dados, xml_file_name):
+    arquivos_gerados = []
+    templates = ["Planilha.docx", "Relatorio.docx"]
+    for template_name in templates:
+        template_path = os.path.join(template_dir, template_name)
+        if not os.path.exists(template_path):
+            print(f"Template '{template_path}' não encontrado. Pulando...")
+            continue
+
+        # Gerar documento em memória
+        output_filename = f"{os.path.splitext(xml_file_name)[0]}_{template_name}"
+        with io.BytesIO() as temp_file:
+            doc = DocxTemplate(template_path)
+            doc.render(dados)
+            doc.save(temp_file)
+            temp_file.seek(0)
+            arquivos_gerados.append((output_filename, temp_file.read()))
+    return arquivos_gerados
+
+def criar_zip_em_memoria(arquivos_gerados):
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for arquivo in arquivos_gerados:
-            if os.path.exists(arquivo):
-                zip_file.write(arquivo, os.path.basename(arquivo))
+        for nome_arquivo, conteudo in arquivos_gerados:
+            zip_file.writestr(nome_arquivo, conteudo)
     zip_buffer.seek(0)  # Redefine o ponteiro para o início
     return zip_buffer
 
 def processar_xmls(cidade, arquivos, palavras_chave):
     st.write(f"Processando arquivos para {cidade}...")
-    
+
     with tempfile.TemporaryDirectory() as temp_dir:
         for uploaded_file in arquivos:
             file_path = os.path.join(temp_dir, uploaded_file.name)
             with open(file_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
-        
+
         templates_base_dir = os.path.abspath(f"{cidade.upper()}")
 
         try:
-            arquivos_gerados = processar_todos_xmls(temp_dir, templates_base_dir, palavras_chave)
+            arquivos_gerados = []
+            for xml_file in os.listdir(temp_dir):
+                if xml_file.endswith(".xml"):
+                    xml_path = os.path.join(temp_dir, xml_file)
+                    dados = extrair_informacoes_xml(xml_path)
+                    if dados is None:
+                        print(f"Pulando o arquivo {xml_file} devido a erros.")
+                        continue
+
+                    template_folder = identificar_template(dados, palavras_chave)
+                    if template_folder is None:
+                        print(f"Nenhum template correspondente encontrado para {xml_file}. Pulando...")
+                        continue
+
+                    template_dir = os.path.join(templates_base_dir, template_folder)
+                    arquivos = gerar_documentos_em_memoria(template_dir, dados, xml_file)
+                    arquivos_gerados.extend(arquivos)
 
             if arquivos_gerados:
                 st.success(f"Processamento concluído para {len(arquivos_gerados)} arquivo(s).")
 
                 # Cria o ZIP em memória
-                zip_buffer = criar_zip_documentos(arquivos_gerados)
+                zip_buffer = criar_zip_em_memoria(arquivos_gerados)
 
-                # Oferece o download do ZIP
+                # Download do ZIP
                 st.download_button(
                     label="⬇️ Baixar todos os documentos (ZIP)",
                     data=zip_buffer.getvalue(),
                     file_name=f"documentos_{cidade.lower()}.zip",
                     mime="application/zip",
-                    key="download_todos"
                 )
             else:
                 st.warning("Nenhum arquivo foi processado.")
