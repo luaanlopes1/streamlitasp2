@@ -124,18 +124,14 @@ def identificar_template(dados, palavras_chave):
 def gerar_documentos(template_dir, dados, xml_file_name):
     arquivos_gerados = []
     templates = ["Planilha.docx", "Relatorio.docx"]
-    
-    # Criar diretório temporário em memória
     temp_dir = tempfile.mkdtemp()
     
     try:
         for template_name in templates:
             template_path = os.path.join(template_dir, template_name)
             if not os.path.exists(template_path):
-                print(f"Template '{template_path}' não encontrado. Pulando...")
                 continue
 
-            # Gerar arquivo em memória
             output_filename = f"{os.path.splitext(xml_file_name)[0]}_{template_name}"
             temp_path = os.path.join(temp_dir, output_filename)
 
@@ -148,6 +144,14 @@ def gerar_documentos(template_dir, dados, xml_file_name):
     except Exception as e:
         print(f"Erro ao gerar documentos: {e}")
         return []
+    finally:
+        # Garantir que o diretório temporário seja limpo
+        try:
+            if os.path.exists(temp_dir):
+                os.rmdir(temp_dir)
+        except:
+            pass
+
 
 
 def processar_todos_xmls(xml_dir, templates_base_dir, palavras_chave):
