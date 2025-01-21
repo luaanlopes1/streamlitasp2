@@ -9,6 +9,7 @@ from num2words import num2words
 import zipfile
 import io
 import re
+import tempfile
 
 # Variáveis globais para palavras-chave
 PALAVRAS_CHAVE_MARACANAU = {
@@ -123,21 +124,31 @@ def identificar_template(dados, palavras_chave):
 def gerar_documentos(template_dir, dados, xml_file_name):
     arquivos_gerados = []
     templates = ["Planilha.docx", "Relatorio.docx"]
-    for template_name in templates:
-        template_path = os.path.join(template_dir, template_name)
-        if not os.path.exists(template_path):
-            print(f"Template '{template_path}' não encontrado. Pulando...")
-            continue
+    
+    # Criar diretório temporário em memória
+    temp_dir = tempfile.mkdtemp()
+    
+    try:
+        for template_name in templates:
+            template_path = os.path.join(template_dir, template_name)
+            if not os.path.exists(template_path):
+                print(f"Template '{template_path}' não encontrado. Pulando...")
+                continue
 
-        output_filename = f"{os.path.splitext(xml_file_name)[0]}_{template_name}"
-        destino_path = os.path.join(template_dir, output_filename)
+            # Gerar arquivo em memória
+            output_filename = f"{os.path.splitext(xml_file_name)[0]}_{template_name}"
+            temp_path = os.path.join(temp_dir, output_filename)
 
-        doc = DocxTemplate(template_path)
-        doc.render(dados)
-        doc.save(destino_path)
-        print(f"Documento gerado: {destino_path}")
-        arquivos_gerados.append(destino_path)
-    return arquivos_gerados
+            doc = DocxTemplate(template_path)
+            doc.render(dados)
+            doc.save(temp_path)
+            arquivos_gerados.append(temp_path)
+            
+        return arquivos_gerados
+    except Exception as e:
+        print(f"Erro ao gerar documentos: {e}")
+        return []
+
 
 def processar_todos_xmls(xml_dir, templates_base_dir, palavras_chave):
     resultados = []
@@ -170,38 +181,51 @@ def criar_zip_documentos(arquivos_gerados):
 def processar_xmls(cidade, arquivos, palavras_chave):
     st.write(f"Processando arquivos para {cidade}...")
     
-    with tempfile.TemporaryDirectory() as temp_dir:
+    # Criar diretório temporário para os XMLs
+    with tempfile.TemporaryDirectory() as xml_temp_dir:
+        # Salvar XMLs no diretório temporário
         for uploaded_file in arquivos:
-            file_path = os.path.join(temp_dir, uploaded_file.name)
+            file_path = os.path.join(xml_temp_dir, uploaded_file.name)
             with open(file_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
         
         templates_base_dir = os.path.abspath(f"{cidade.upper()}")
         
         try:
-            arquivos_gerados = processar_todos_xmls(temp_dir, templates_base_dir, palavras_chave)
-            
-            if arquivos_gerados:
-                st.success(f"Processamento concluído para {len(arquivos_gerados)} arquivo(s).")
+            # Criar ZIP em memória
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                arquivos_gerados = processar_todos_xmls(xml_temp_dir, templates_base_dir, palavras_chave)
                 
-                zip_buffer = criar_zip_documentos(arquivos_gerados)
-                
-                st.download_button(
-                    label="⬇️ Baixar todos os documentos (ZIP)",
-                    data=zip_buffer.getvalue(),
-                    file_name=f"documentos_{cidade.lower()}.zip",
-                    mime="application/zip",
-                    key="download_todos"
-                )
-                
-                st.write("Arquivos gerados:")
-                for arquivo in arquivos_gerados:
-                    st.write(os.path.basename(arquivo))
+                if arquivos_gerados:
+                    st.success(f"Processamento concluído para {len(arquivos_gerados)} arquivo(s).")
                     
-            else:
-                st.warning("Nenhum arquivo foi processado.")
+                    # Adicionar arquivos ao ZIP diretamente da memória
+                    for arquivo in arquivos_gerados:
+                        if os.path.exists(arquivo):
+                            zip_file.write(arquivo, os.path.basename(arquivo))
+                            # Remover arquivo temporário após adicionar ao ZIP
+                            os.remove(arquivo)
+                    
+                    # Botão para download
+                    st.download_button(
+                        label="⬇️ Baixar todos os documentos (ZIP)",
+                        data=zip_buffer.getvalue(),
+                        file_name=f"documentos_{cidade.lower()}.zip",
+                        mime="application/zip",
+                        key="download_todos"
+                    )
+                    
+                    # Exibir lista de arquivos
+                    st.write("Arquivos gerados:")
+                    for arquivo in arquivos_gerados:
+                        st.write(os.path.basename(arquivo))
+                else:
+                    st.warning("Nenhum arquivo foi processado.")
+                    
         except Exception as e:
             st.error(f"Erro ao processar XMLs: {str(e)}")
+
 
 def main():
     st.title("Gerador de Relatórios NFs ASP")
